@@ -44,3 +44,21 @@ Every rider must press **ÖLEN ÄR SLUT** for the current stop. The next leg is 
 
 ## v9 – clearer pre-rider flow
 UX copy has been simplified around the core loop: follow the rider, the rider orders/pays, everyone finishes their beer, then the next rider gets the secret choice. "Check in" wording has been replaced by "RUNDAN ÄR BESTÄLLD".
+
+
+## v10 – map + late join
+- The mock Galoppen map is visible again in the ride flow.
+- Only already visited stops are shown; future destinations stay private.
+- Riders can join an already started Galopp and are added at the end of the active rotation.
+- Late joiners start with the current completed beer count, so they never block old rounds.
+
+
+## v11 – riktig karta och riktig krogpool
+
+- Leaflet + OpenStreetMap ersätter låtsaskartan.
+- Delad karta visar endast redan besökta stopp.
+- Kvällens ryttare får en privat karta med de två hemliga valen.
+- Vald destination kan öppnas som vägbeskrivning i Google Maps.
+- 40 statiska barer, pubar, vinbarer och restaurangbarer i Vasastan/Birkastan/Hagastaden ingår tills en dynamisk AI-/places-koppling byggs.
+- Matläget prioriterar stopp markerade med `food: true`.
+- Sen ankomst stöds: en deltagare kan joina en pågående Galopp, hamnar sist i turordningen och får direkt se var gruppen befinner sig.

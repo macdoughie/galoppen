@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ensureAnonymousUser } from '../lib/firebase';
 import {
   answerFood,
@@ -18,6 +19,11 @@ import {
   watchSession,
 } from '../lib/game';
 import './globals.css';
+
+const GaloppenMap = dynamic(() => import('./components/GaloppenMap'), {
+  ssr: false,
+  loading: () => <div className="card mapLoading">Laddar kartan…</div>,
+});
 
 function fmtTime(iso) {
   if (!iso) return '';
@@ -58,6 +64,7 @@ export default function Page() {
   const activePlayers = players.filter((p) => p.active !== false);
   const hasLeftRide = me?.active === false;
   const currentRider = players.find((p) => p.uid === session?.currentRiderUid);
+  const joinedLate = !!me?.joinedLate;
   const currentPayer = players.find((p) => p.uid === session?.currentPayerUid);
   const amOwner = session?.ownerUid === user?.uid;
   const amRider = session?.currentRiderUid === user?.uid;
@@ -149,6 +156,7 @@ export default function Page() {
         <Header />
         <div className="card">
           <h2>{mode === 'create' ? 'Skapa kvällens Galopp' : 'Join the ride'}</h2>
+          {mode === 'join' && <p className="sub">Du kan ansluta både före start och mitt under en pågående Galopp. Är du sen ser du direkt var gänget befinner sig.</p>}
           <input className="input" placeholder="Galoppens namn" value={rideName} onChange={(e) => setRideName(e.target.value)} />
           <input className="input" placeholder={mode === 'create' ? 'Hostens smeknamn' : 'Ditt smeknamn'} value={nickname} onChange={(e) => setNickname(e.target.value)} />
           {mode === 'create' && <div className="capacityBox"><div><strong>Antal platser</strong><span>inklusive host</span></div><div className="capacityControls"><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.max(2,n-1))}>−</button><strong>{capacity}</strong><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.min(20,n+1))}>+</button></div></div>}
@@ -168,6 +176,17 @@ export default function Page() {
     return (
       <main className="shell">
         <Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
         <div className="card">
           <div className="tiny">KVÄLLENS GALOPP</div>
           <div className="sessionCode">{session.rideName}</div>
@@ -201,6 +220,17 @@ export default function Page() {
   if (session.status === 'finished') {
     return (
       <main className="shell"><Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
         <div className="card hero finishCard">
           <div className="horse">🏁</div>
           <div className="h1">Galoppen är över</div>
@@ -228,6 +258,23 @@ export default function Page() {
   if (amRider && session.phase === 'riding' && privateData?.phase === 'choose') {
     return (
       <main className="shell"><Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap
+              visited={visited}
+              currentRider={currentRider}
+              phase={session.phase}
+              privateChoices={privateData?.choices || []}
+              privateMode
+            />
+          </>
+        )}
         <div className="card secret">
           <div className="lock">🎩</div>
           <h2>{me?.nickname}, du leder nästa etapp</h2>
@@ -243,7 +290,13 @@ export default function Page() {
             <div className="choice" key={choice.id}>
               <div className="tiny">ALTERNATIV {i + 1}</div>
               <h3>{choice.name}</h3>
-              <div className="meta">🚶 cirka {choice.mins} min</div>
+              <div className="venueAddress">{choice.address}</div>
+              <div className="venueMeta">
+                <span>🚶 cirka {choice.mins} min</span>
+                <span>•</span>
+                <span>{choice.type}</span>
+                {choice.food && <span>🍽 mat</span>}
+              </div>
               <button className="btn primary" disabled={busy} onClick={() => choose(choice)}>VÄLJ DETTA STOPP</button>
             </div>
           ))}
@@ -261,14 +314,44 @@ export default function Page() {
   if (amRider && session.phase === 'riding' && privateData?.phase === 'navigate') {
     return (
       <main className="shell"><Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap
+              visited={visited}
+              currentRider={currentRider}
+              phase={session.phase}
+              selected={privateData?.selected}
+              privateMode
+            />
+          </>
+        )}
         <div className="card secret">
           <div className="lock">🗺️</div>
           <h2>Du leder Galoppen</h2>
           <div className="choice destination">
             <div className="tiny">DIN HEMLIGA DESTINATION</div>
             <h3>{privateData.selected?.name}</h3>
-            <div className="meta">🚶 cirka {privateData.selected?.mins} min</div>
+            <div className="venueAddress">{privateData.selected?.address}</div>
+            <div className="venueMeta">
+              <span>🚶 cirka {privateData.selected?.mins} min</span>
+              <span>•</span>
+              <span>{privateData.selected?.type}</span>
+            </div>
           </div>
+          <a
+            className="btn secondary mapDirectionsBtn"
+            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${privateData.selected?.name}, ${privateData.selected?.address}, Stockholm`)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            ÖPPNA VÄGBESKRIVNING 🗺️
+          </a>
           <div className="roleBox"><strong>På nästa stopp</strong><span>🍺 Du väljer vilken ölsort ni beställer.</span><span>💳 Du betalar rundan.</span></div>
           <p className="sub">När ni kommit fram: beställ öl till hela sällskapet och betala rundan. Tryck sedan här.</p>
           <button className="btn primary" disabled={busy} onClick={arrived}>RUNDAN ÄR BESTÄLLD 🍺</button>
@@ -287,6 +370,17 @@ export default function Page() {
   if (!amRider && session.phase === 'riding') {
     return (
       <main className="shell"><Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
         <div className="card secret">
           <div className="lock">🔒</div>
           <h2>Följ {currentRider?.nickname} 🏇</h2>
@@ -316,6 +410,17 @@ export default function Page() {
     return (
       <main className="shell">
         <Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
         <div className="card currentCard">
           <div className="topline">
             <span className="tiny">STOPP {stopNumber}</span>
@@ -382,6 +487,17 @@ export default function Page() {
     if (amRider) {
       return (
         <main className="shell"><Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
           <div className="card foodCard"><div className="foodEmoji">🍔</div><h2>Dags för lite käk?</h2><p className="sub">Ni har gjort <strong>{visited.length} stopp</strong>. Vill du som nästa ryttare få alternativ där det också går att äta?</p>
             <button className="btn primary" disabled={busy} onClick={() => run(() => answerFood({ code, session, players, wantsFood: true }))}>🍽 JA, GÄRNA MAT</button>
             <button className="btn secondary" disabled={busy} onClick={() => run(() => answerFood({ code, session, players, wantsFood: false }))}>🏇 NEJ, FULL GALOPP</button>
@@ -397,6 +513,17 @@ export default function Page() {
     }
     return (
       <main className="shell"><Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
         <div className="card hero"><div className="horse">🍔</div><h3>Nästa ryttare tar ställning till mat</h3><p className="sub"><strong>{currentRider?.nickname}</strong> avgör om nästa stopp ska fungera för käk.</p></div>
         <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
         {amOwner && !hasLeftRide && (
@@ -415,6 +542,17 @@ export default function Page() {
     return (
       <main className="shell">
         <Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
         <div className="card currentCard">
           <div className="topline"><span className="tiny">START</span><span className="statusPill">🍺 Tennstopet</span></div>
           <div className="center">
@@ -447,6 +585,17 @@ export default function Page() {
   return (
     <main className="shell">
       <Header code={session?.rideName || code} />
+        {session && (
+          <>
+            {joinedLate && (
+              <div className="lateJoinBanner">
+                <strong>👋 Du hoppade på Galoppen i efterhand</strong>
+                <span>Du är med från och med nu, ligger sist i turordningen och ser direkt var Galoppen befinner sig.</span>
+              </div>
+            )}
+            <GaloppenMap visited={visited} currentRider={currentRider} phase={session.phase} />
+          </>
+        )}
       <div className="card hero">
         <div className="horse">⏳</div>
         <h3>Synkar Galoppen…</h3>
@@ -515,11 +664,6 @@ function LeaveRideButton({ hasLeftRide, busy, onLeave }) {
 
 function Header({ code }) {
   return <div className="brand"><div className="logo">🏇 GALOPPEN</div><div className="badge">{code || 'Stockholm'}</div></div>;
-}
-
-function MapCard({ visited }) {
-  const pins = visited.map((entry, i) => ({ entry, left: 12 + (i * 53) % 82, top: 22 + (i * 37) % 68 }));
-  return <div className="card"><div className="sectionHeader"><h3>🗺 Galoppkartan</h3><span>{visited.length} platser</span></div><div className="mapfake">{pins.map((p, i) => <span key={`${p.entry.stop.id}-${i}`} className="pin" style={{ left: `${p.left}%`, top: `${p.top}%` }}>{i === pins.length - 1 ? '📍' : '🍺'}</span>)}</div></div>;
 }
 
 function History({ visited, compact = false }) {
