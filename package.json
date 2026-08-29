@@ -8,12 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
-    "next": "15.5.2",
+    "firebase": "^12.2.1",
+    "leaflet": "1.9.4",
+    "next": "^15.5.24",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "leaflet": "1.9.4",
-    "react-leaflet": "5.0.0",
-    "firebase": "^12.2.1"
-  },
-  "devDependencies": {}
+    "react-leaflet": "5.0.0"
+  }
 }
