@@ -40,3 +40,7 @@ The host can end the ride from the active game. Ending the ride stores `status: 
 
 ## v7 – all riders finish before moving on
 Every rider must press **ÖLEN ÄR SLUT** for the current stop. The next leg is released only when all active riders have finished. The game also shows the riders in join/order sequence with each rider's consumed beer count and current completion state.
+
+
+## v9 – clearer pre-rider flow
+UX copy has been simplified around the core loop: follow the rider, the rider orders/pays, everyone finishes their beer, then the next rider gets the secret choice. "Check in" wording has been replaced by "RUNDAN ÄR BESTÄLLD".

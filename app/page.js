@@ -115,7 +115,7 @@ export default function Page() {
   }
 
   async function leaveGaloppen() {
-    const ok = window.confirm('Vill du lämna Galoppen? Du tas bort ur turordningen men kan fortsätta följa resten av kvällen.');
+    const ok = window.confirm('Vill du lämna Galoppen? Du tas bort ur turordningen men kan fortsätta följa kvällen. Om du är sista aktiva ryttaren avslutas och sparas Galoppen automatiskt.');
     if (!ok) return;
     await run(() => leaveRide({ code, session, players, uid: user.uid }));
   }
@@ -270,7 +270,8 @@ export default function Page() {
             <div className="meta">🚶 cirka {privateData.selected?.mins} min</div>
           </div>
           <div className="roleBox"><strong>På nästa stopp</strong><span>🍺 Du väljer vilken ölsort ni beställer.</span><span>💳 Du betalar rundan.</span></div>
-          <button className="btn primary" disabled={busy} onClick={arrived}>CHECKA IN HÄR 🍺</button>
+          <p className="sub">När ni kommit fram: beställ öl till hela sällskapet och betala rundan. Tryck sedan här.</p>
+          <button className="btn primary" disabled={busy} onClick={arrived}>RUNDAN ÄR BESTÄLLD 🍺</button>
         </div>
         <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
         {amOwner && !hasLeftRide && (
@@ -288,9 +289,9 @@ export default function Page() {
       <main className="shell"><Header code={session?.rideName || code} />
         <div className="card secret">
           <div className="lock">🔒</div>
-          <h2>Hemlig destination</h2>
-          <p className="sub"><strong>{currentRider?.nickname}</strong> leder nästa etapp.</p>
-          <div className="roleBox"><span>🧭 Följ ryttaren.</span><span>🍺 Ryttaren väljer ölsort.</span><span>💳 Ryttaren betalar nästa runda.</span></div>
+          <h2>Följ {currentRider?.nickname} 🏇</h2>
+          <p className="sub"><strong>{currentRider?.nickname}</strong> leder er till nästa hemliga stopp och betalar nästa runda.</p>
+          <div className="roleBox"><span>🧭 Följ ryttaren.</span><span>🍺 Ryttaren väljer ölsort.</span><span>💳 Ryttaren betalar nästa runda.</span><span>📲 När rundan är beställd får du nästa uppgift.</span></div>
         </div>
         <History visited={visited} compact />
         <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
@@ -307,6 +308,8 @@ export default function Page() {
     const stopNumber = visited.length;
     const beerIsFinished = (me?.beerFinishedStop || 0) >= stopNumber;
     const finishedCount = activePlayers.filter((p) => (p.beerFinishedStop || 0) >= stopNumber).length;
+    const waitingFor = activePlayers.filter((p) => (p.beerFinishedStop || 0) < stopNumber);
+    const waitingNames = waitingFor.map((p) => p.nickname);
     const allFinished = activePlayers.length > 0 && finishedCount === activePlayers.length;
     const nextRider = currentRider;
 
@@ -316,7 +319,7 @@ export default function Page() {
         <div className="card currentCard">
           <div className="topline">
             <span className="tiny">STOPP {stopNumber}</span>
-            <span className="statusPill">🍺 {finishedCount}/{activePlayers.length} klara</span>
+            <span className="statusPill">🍺 Rundan är igång · {finishedCount}/{activePlayers.length} klara</span>
           </div>
           <div className="center">
             <div className="beerIcon">🍺</div>
@@ -341,14 +344,17 @@ export default function Page() {
             ) : !allFinished ? (
               <div className="readyBox">
                 <div className="horse">✓</div>
-                <h3>Din öl är klar</h3>
-                <p className="sub">Inväntar resten av gänget. <strong>{finishedCount}/{activePlayers.length}</strong> har druckit upp.</p>
+                <h3>Du är klar ✓</h3>
+                <p className="sub">
+                  <strong>{finishedCount}/{activePlayers.length}</strong> är klara.
+                  {waitingNames.length > 0 && <> Inväntar <strong>{waitingNames.join(', ')}</strong>.</>}
+                </p>
               </div>
             ) : (
               <div className="readyBox">
                 <div className="horse">🏇</div>
-                <h3>Alla är klara</h3>
-                <p className="sub"><strong>{nextRider?.nickname}</strong> är nästa ryttare.</p>
+                <h3>Alla är klara 🏁</h3>
+                <p className="sub"><strong>{nextRider?.nickname}</strong> tar över som nästa ryttare.</p>
               </div>
             )}
           </div>
@@ -417,13 +423,13 @@ export default function Page() {
             {amLeader ? (
               <>
                 <span className="payer">🎩 Du är kvällens host och betalar första rundan</span>
-                <p className="sub">När ni har beställt och fått ölen checkar du in för hela gruppen.</p>
-                <button className="btn primary" disabled={busy} onClick={leaderCheckInStart}>CHECKA IN 🍺</button>
+                <p className="sub">Beställ öl till hela sällskapet och betala första rundan. Tryck sedan här.</p>
+                <button className="btn primary" disabled={busy} onClick={leaderCheckInStart}>RUNDAN ÄR BESTÄLLD 🍺</button>
               </>
             ) : (
               <>
                 <span className="payer">🎩 {currentPayer?.nickname} är kvällens host</span>
-                <p className="sub">Hosten checkar in för hela gruppen när första rundan är beställd.</p>
+                <p className="sub">Hosten beställer och betalar första rundan. När den är beställd går Galoppen vidare.</p>
               </>
             )}
           </div>
@@ -482,8 +488,8 @@ function RiderBoard({ players, beerStats, currentRiderUid, stopNumber, finished 
                       : isNext
                         ? 'Nästa ryttare'
                         : doneThisStop
-                          ? 'Klar med ölen'
-                          : 'Dricker'}
+                          ? 'Klar'
+                          : 'Dricker sin öl'}
                 </span>
               </div>
               <div className="beerCount">🍺 {beers}</div>
