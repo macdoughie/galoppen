@@ -12,3 +12,15 @@
 .endRideBtn{margin-top:16px}
 .btn.danger{background:rgba(160,40,40,.16);border:1px solid rgba(255,110,110,.35);color:#ffd7d7}
 .savedBadge{display:inline-block;margin:10px 0 18px;padding:8px 12px;border-radius:999px;background:rgba(86,160,95,.15);border:1px solid rgba(121,210,130,.28);font-size:13px}
+
+.riderCard{margin-top:14px}
+.riderList{display:flex;flex-direction:column;gap:8px}
+.riderRow{display:grid;grid-template-columns:38px 1fr auto 34px;gap:10px;align-items:center;padding:11px 10px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}
+.riderRow.nextRider{border-color:rgba(238,190,76,.45);background:rgba(238,190,76,.07)}
+.riderOrder{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;background:rgba(255,255,255,.08)}
+.riderName{display:flex;flex-direction:column;min-width:0}
+.riderName strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.riderName span{font-size:12px;opacity:.67;margin-top:2px}
+.beerCount{font-weight:800;white-space:nowrap}
+.drinkDot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:rgba(255,255,255,.08);opacity:.65}
+.drinkDot.done{background:rgba(86,160,95,.18);opacity:1}

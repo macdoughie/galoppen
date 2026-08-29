@@ -66,6 +66,13 @@ export default function Page() {
     return stats;
   }, [players, visited]);
 
+  const beerStats = useMemo(() => {
+    return Object.fromEntries(
+      players.map((p) => [p.uid, Math.max(0, p.beerFinishedStop || 0)])
+    );
+  }, [players]);
+
+
   async function run(fn) {
     try { setBusy(true); setError(''); await fn(); }
     catch (e) { setError(e.message || String(e)); }
@@ -191,6 +198,7 @@ export default function Page() {
           <div className="savedBadge">✓ Rundans historik är sparad</div>
           <p className="sub">{visited.length} stopp genomförda</p>
         </div>
+        <RiderBoard players={players} beerStats={beerStats} currentRiderUid={null} stopNumber={visited.length} finished />
         <History visited={visited} />
         <div className="card compact">
           <div className="sectionHeader"><h3>🍺 Betalda rundor</h3><span>{players.length} ryttare</span></div>
@@ -286,7 +294,9 @@ export default function Page() {
   if (session.phase === 'drinking') {
     const stopNumber = visited.length;
     const beerIsFinished = (me?.beerFinishedStop || 0) >= stopNumber;
-    const iAmNext = session.currentRiderUid === user?.uid;
+    const finishedCount = players.filter((p) => (p.beerFinishedStop || 0) >= stopNumber).length;
+    const allFinished = players.length > 0 && finishedCount === players.length;
+    const nextRider = currentRider;
 
     return (
       <main className="shell">
@@ -294,7 +304,7 @@ export default function Page() {
         <div className="card currentCard">
           <div className="topline">
             <span className="tiny">STOPP {stopNumber}</span>
-            <span className="statusPill">🍺 Incheckad</span>
+            <span className="statusPill">🍺 {finishedCount}/{players.length} klara</span>
           </div>
           <div className="center">
             <div className="beerIcon">🍺</div>
@@ -307,24 +317,31 @@ export default function Page() {
 
             {!beerIsFinished ? (
               <>
-                <p className="sub">När du har druckit upp din öl markerar du det på din egen telefon.</p>
+                <p className="sub">Alla ryttare måste markera när den egna ölen är uppdrucken. Nästa etapp öppnas först när samtliga är klara.</p>
                 <button className="btn primary" disabled={busy} onClick={beerFinished}>ÖLEN ÄR SLUT 🍺</button>
               </>
-            ) : iAmNext ? (
-              <div className="readyBox">
-                <div className="horse">🏇</div>
-                <h3>Du är nästa ryttare</h3>
-                <p className="sub">Dina hemliga alternativ förbereds…</p>
-              </div>
-            ) : (
+            ) : !allFinished ? (
               <div className="readyBox">
                 <div className="horse">✓</div>
                 <h3>Din öl är klar</h3>
-                <p className="sub">Inväntar <strong>{currentRider?.nickname}</strong>, som är nästa ryttare.</p>
+                <p className="sub">Inväntar resten av gänget. <strong>{finishedCount}/{players.length}</strong> har druckit upp.</p>
+              </div>
+            ) : (
+              <div className="readyBox">
+                <div className="horse">🏇</div>
+                <h3>Alla är klara</h3>
+                <p className="sub"><strong>{nextRider?.nickname}</strong> är nästa ryttare.</p>
               </div>
             )}
           </div>
         </div>
+
+        <RiderBoard
+          players={players}
+          beerStats={beerStats}
+          currentRiderUid={session.currentRiderUid}
+          stopNumber={stopNumber}
+        />
 
         {amOwner && (
           <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
@@ -414,6 +431,43 @@ export default function Page() {
         )}
       {error && <div className="errorBox">{error}</div>}
     </main>
+  );
+}
+
+function RiderBoard({ players, beerStats, currentRiderUid, stopNumber, finished = false }) {
+  return (
+    <div className="card riderCard">
+      <div className="sectionHeader">
+        <h3>🏇 Ryttarna</h3>
+        <span>turordning</span>
+      </div>
+      <div className="riderList">
+        {players.map((p, index) => {
+          const beers = beerStats[p.uid] || 0;
+          const doneThisStop = stopNumber > 0 && beers >= stopNumber;
+          const isNext = currentRiderUid === p.uid;
+          return (
+            <div className={`riderRow ${isNext ? 'nextRider' : ''}`} key={p.uid}>
+              <div className="riderOrder">{index + 1}</div>
+              <div className="riderName">
+                <strong>{p.nickname}</strong>
+                <span>
+                  {finished
+                    ? 'Galoppen avslutad'
+                    : isNext
+                      ? 'Nästa ryttare'
+                      : doneThisStop
+                        ? 'Klar med ölen'
+                        : 'Dricker'}
+                </span>
+              </div>
+              <div className="beerCount">🍺 {beers}</div>
+              {!finished && <div className={`drinkDot ${doneThisStop ? 'done' : ''}`}>{doneThisStop ? '✓' : '…'}</div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

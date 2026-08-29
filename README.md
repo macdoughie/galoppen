@@ -36,3 +36,7 @@ Only the rider/host leading the current leg checks the group in. After check-in,
 
 ## v6 – finish and save
 The host can end the ride from the active game. Ending the ride stores `status: finished`, `finishedAt`, `savedAt` and a summary in the existing Firestore session. The complete `visited` history remains in the session document and is therefore preserved for later recap/history views.
+
+
+## v7 – all riders finish before moving on
+Every rider must press **ÖLEN ÄR SLUT** for the current stop. The next leg is released only when all active riders have finished. The game also shows the riders in join/order sequence with each rider's consumed beer count and current completion state.
