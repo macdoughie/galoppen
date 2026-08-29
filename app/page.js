@@ -346,11 +346,11 @@ export default function Page() {
           </div>
           <a
             className="btn secondary mapDirectionsBtn"
-            href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${privateData.selected?.name}, ${privateData.selected?.address}, Stockholm`)}`}
+            href={`https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=${encodeURIComponent(`${privateData.selected?.name}, ${privateData.selected?.address}, Stockholm`)}`}
             target="_blank"
             rel="noreferrer"
           >
-            ÖPPNA VÄGBESKRIVNING 🗺️
+            ÖPPNA TUR-FÖR-TUR 🗺️
           </a>
           <div className="roleBox"><strong>På nästa stopp</strong><span>🍺 Du väljer vilken ölsort ni beställer.</span><span>💳 Du betalar rundan.</span></div>
           <p className="sub">När ni kommit fram: beställ öl till hela sällskapet och betala rundan. Tryck sedan här.</p>

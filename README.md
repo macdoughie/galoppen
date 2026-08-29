@@ -62,3 +62,12 @@ UX copy has been simplified around the core loop: follow the rider, the rider or
 - 40 statiska barer, pubar, vinbarer och restaurangbarer i Vasastan/Birkastan/Hagastaden ingår tills en dynamisk AI-/places-koppling byggs.
 - Matläget prioriterar stopp markerade med `food: true`.
 - Sen ankomst stöds: en deltagare kan joina en pågående Galopp, hamnar sist i turordningen och får direkt se var gruppen befinner sig.
+
+
+## v12 – GPS, beer trail and in-map directions
+- Each visited venue is marked with a beer icon on the shared map.
+- The phone's live GPS position is shown as a blue dot using browser geolocation.
+- The current rider gets a private walking route from their live GPS position to the selected hidden venue.
+- Walking routing uses the public OpenStreetMap.de foot-routing service and falls back to a straight guide line if routing is unavailable.
+- Google Maps remains available for turn-by-turn walking navigation.
+- Future/hidden venues remain private to the current rider.

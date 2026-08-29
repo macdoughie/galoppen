@@ -75,3 +75,15 @@ linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px
 .choice .venueMeta span:last-child{white-space:nowrap}
 
 .mapDirectionsBtn{display:flex;text-decoration:none;justify-content:center;margin:12px 0}
+
+
+/* v12 GPS + beer trail + live walking guidance */
+.beerMapPin{position:relative;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#171717;border:2px solid rgba(255,255,255,.75);box-shadow:0 5px 16px rgba(0,0,0,.42)}
+.beerMapPin.current{box-shadow:0 0 0 5px rgba(255,255,255,.20),0 5px 16px rgba(0,0,0,.42)}
+.beerEmoji{font-size:22px;line-height:1}
+.beerStopNo{position:absolute;right:-5px;top:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:10px;background:#f5f1e8;color:#151515;display:grid;place-items:center;font-size:10px;font-weight:900;border:1px solid #151515}
+.gpsPin{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.94);display:grid;place-items:center;box-shadow:0 0 0 5px rgba(255,255,255,.22),0 4px 16px rgba(0,0,0,.38)}
+.gpsPin span{width:12px;height:12px;border-radius:50%;background:#1976d2;display:block}
+.gpsInfo{margin-top:9px;padding:9px 11px;border-radius:11px;background:rgba(255,255,255,.045);font-size:12px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.gpsWarning{border:1px solid rgba(255,255,255,.10)}
+.gpsRetry{border:0;border-radius:9px;padding:7px 9px;background:rgba(255,255,255,.11);color:inherit;font-weight:800;font-size:10px;white-space:nowrap}
