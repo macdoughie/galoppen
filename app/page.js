@@ -9,6 +9,7 @@ import {
   createSession,
   finishGame,
   joinSession,
+  leaveRide,
   markBeerFinished,
   selectDestination,
   startGame,
@@ -54,6 +55,8 @@ export default function Page() {
   }, [players, hostUid]);
 
   const me = players.find((p) => p.uid === user?.uid);
+  const activePlayers = players.filter((p) => p.active !== false);
+  const hasLeftRide = me?.active === false;
   const currentRider = players.find((p) => p.uid === session?.currentRiderUid);
   const currentPayer = players.find((p) => p.uid === session?.currentPayerUid);
   const amOwner = session?.ownerUid === user?.uid;
@@ -109,6 +112,12 @@ export default function Page() {
     const ok = window.confirm('Avsluta Galoppen och spara rundan?');
     if (!ok) return;
     await run(() => finishGame({ code, session, players }));
+  }
+
+  async function leaveGaloppen() {
+    const ok = window.confirm('Vill du lämna Galoppen? Du tas bort ur turordningen men kan fortsätta följa resten av kvällen.');
+    if (!ok) return;
+    await run(() => leaveRide({ code, session, players, uid: user.uid }));
   }
 
   async function choose(choice) {
@@ -239,7 +248,8 @@ export default function Page() {
             </div>
           ))}
         </div>
-        {amOwner && (
+        <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
+        {amOwner && !hasLeftRide && (
           <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
             AVSLUTA & SPARA RUNDAN
           </button>
@@ -262,7 +272,8 @@ export default function Page() {
           <div className="roleBox"><strong>På nästa stopp</strong><span>🍺 Du väljer vilken ölsort ni beställer.</span><span>💳 Du betalar rundan.</span></div>
           <button className="btn primary" disabled={busy} onClick={arrived}>CHECKA IN HÄR 🍺</button>
         </div>
-        {amOwner && (
+        <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
+        {amOwner && !hasLeftRide && (
           <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
             AVSLUTA & SPARA RUNDAN
           </button>
@@ -282,7 +293,8 @@ export default function Page() {
           <div className="roleBox"><span>🧭 Följ ryttaren.</span><span>🍺 Ryttaren väljer ölsort.</span><span>💳 Ryttaren betalar nästa runda.</span></div>
         </div>
         <History visited={visited} compact />
-        {amOwner && (
+        <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
+        {amOwner && !hasLeftRide && (
           <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
             AVSLUTA & SPARA RUNDAN
           </button>
@@ -294,8 +306,8 @@ export default function Page() {
   if (session.phase === 'drinking') {
     const stopNumber = visited.length;
     const beerIsFinished = (me?.beerFinishedStop || 0) >= stopNumber;
-    const finishedCount = players.filter((p) => (p.beerFinishedStop || 0) >= stopNumber).length;
-    const allFinished = players.length > 0 && finishedCount === players.length;
+    const finishedCount = activePlayers.filter((p) => (p.beerFinishedStop || 0) >= stopNumber).length;
+    const allFinished = activePlayers.length > 0 && finishedCount === activePlayers.length;
     const nextRider = currentRider;
 
     return (
@@ -304,7 +316,7 @@ export default function Page() {
         <div className="card currentCard">
           <div className="topline">
             <span className="tiny">STOPP {stopNumber}</span>
-            <span className="statusPill">🍺 {finishedCount}/{players.length} klara</span>
+            <span className="statusPill">🍺 {finishedCount}/{activePlayers.length} klara</span>
           </div>
           <div className="center">
             <div className="beerIcon">🍺</div>
@@ -315,16 +327,22 @@ export default function Page() {
                 : `${currentPayer?.nickname} betalar rundan`}
             </span>
 
-            {!beerIsFinished ? (
+            {hasLeftRide ? (
+              <div className="spectatorBox">
+                <div className="horse">👀</div>
+                <h3>Du följer Galoppen</h3>
+                <p className="sub">Du har lämnat turordningen men kan fortsätta följa resten av kvällen.</p>
+              </div>
+            ) : !beerIsFinished ? (
               <>
-                <p className="sub">Alla ryttare måste markera när den egna ölen är uppdrucken. Nästa etapp öppnas först när samtliga är klara.</p>
+                <p className="sub">Alla aktiva ryttare måste markera när den egna ölen är uppdrucken. Nästa etapp öppnas först när samtliga är klara.</p>
                 <button className="btn primary" disabled={busy} onClick={beerFinished}>ÖLEN ÄR SLUT 🍺</button>
               </>
             ) : !allFinished ? (
               <div className="readyBox">
                 <div className="horse">✓</div>
                 <h3>Din öl är klar</h3>
-                <p className="sub">Inväntar resten av gänget. <strong>{finishedCount}/{players.length}</strong> har druckit upp.</p>
+                <p className="sub">Inväntar resten av gänget. <strong>{finishedCount}/{activePlayers.length}</strong> har druckit upp.</p>
               </div>
             ) : (
               <div className="readyBox">
@@ -343,7 +361,8 @@ export default function Page() {
           stopNumber={stopNumber}
         />
 
-        {amOwner && (
+        <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
+        {amOwner && !hasLeftRide && (
           <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
             AVSLUTA & SPARA RUNDAN
           </button>
@@ -361,7 +380,8 @@ export default function Page() {
             <button className="btn primary" disabled={busy} onClick={() => run(() => answerFood({ code, session, players, wantsFood: true }))}>🍽 JA, GÄRNA MAT</button>
             <button className="btn secondary" disabled={busy} onClick={() => run(() => answerFood({ code, session, players, wantsFood: false }))}>🏇 NEJ, FULL GALOPP</button>
           </div>
-          {amOwner && (
+          <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
+          {amOwner && !hasLeftRide && (
             <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
               AVSLUTA & SPARA RUNDAN
             </button>
@@ -372,7 +392,8 @@ export default function Page() {
     return (
       <main className="shell"><Header code={session?.rideName || code} />
         <div className="card hero"><div className="horse">🍔</div><h3>Nästa ryttare tar ställning till mat</h3><p className="sub"><strong>{currentRider?.nickname}</strong> avgör om nästa stopp ska fungera för käk.</p></div>
-        {amOwner && (
+        <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
+        {amOwner && !hasLeftRide && (
           <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
             AVSLUTA & SPARA RUNDAN
           </button>
@@ -407,7 +428,8 @@ export default function Page() {
             )}
           </div>
         </div>
-        {amOwner && (
+        <LeaveRideButton hasLeftRide={hasLeftRide} busy={busy} onLeave={leaveGaloppen} />
+        {amOwner && !hasLeftRide && (
           <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
             AVSLUTA & SPARA RUNDAN
           </button>
@@ -445,7 +467,8 @@ function RiderBoard({ players, beerStats, currentRiderUid, stopNumber, finished 
         {players.map((p, index) => {
           const beers = beerStats[p.uid] || 0;
           const doneThisStop = stopNumber > 0 && beers >= stopNumber;
-          const isNext = currentRiderUid === p.uid;
+          const checkedOut = p.active === false;
+          const isNext = !checkedOut && currentRiderUid === p.uid;
           return (
             <div className={`riderRow ${isNext ? 'nextRider' : ''}`} key={p.uid}>
               <div className="riderOrder">{index + 1}</div>
@@ -454,20 +477,33 @@ function RiderBoard({ players, beerStats, currentRiderUid, stopNumber, finished 
                 <span>
                   {finished
                     ? 'Galoppen avslutad'
-                    : isNext
-                      ? 'Nästa ryttare'
-                      : doneThisStop
-                        ? 'Klar med ölen'
-                        : 'Dricker'}
+                    : checkedOut
+                      ? 'Har lämnat Galoppen · följer kvällen'
+                      : isNext
+                        ? 'Nästa ryttare'
+                        : doneThisStop
+                          ? 'Klar med ölen'
+                          : 'Dricker'}
                 </span>
               </div>
               <div className="beerCount">🍺 {beers}</div>
-              {!finished && <div className={`drinkDot ${doneThisStop ? 'done' : ''}`}>{doneThisStop ? '✓' : '…'}</div>}
+              {!finished && <div className={`drinkDot ${checkedOut ? 'left' : doneThisStop ? 'done' : ''}`}>{checkedOut ? '–' : doneThisStop ? '✓' : '…'}</div>}
             </div>
           );
         })}
       </div>
     </div>
+  );
+}
+
+function LeaveRideButton({ hasLeftRide, busy, onLeave }) {
+  if (hasLeftRide) {
+    return <div className="spectatorNote">👀 Du har lämnat Galoppen men följer fortfarande kvällen.</div>;
+  }
+  return (
+    <button className="btn leaveRideBtn" disabled={busy} onClick={onLeave}>
+      LÄMNA GALOPPEN
+    </button>
   );
 }
 
