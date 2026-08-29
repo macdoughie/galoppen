@@ -5,10 +5,11 @@ import { ensureAnonymousUser } from '../lib/firebase';
 import {
   answerFood,
   arriveAtDestination,
+  checkInStart,
   createSession,
   finishGame,
   joinSession,
-  prepareNextLeg,
+  markBeerFinished,
   selectDestination,
   startGame,
   watchPlayers,
@@ -89,8 +90,18 @@ export default function Page() {
     });
   }
 
-  async function checkIn() {
-    await run(() => prepareNextLeg({ code, session, players }));
+  async function leaderCheckInStart() {
+    await run(() => checkInStart({ code, session, players, leader: me }));
+  }
+
+  async function beerFinished() {
+    await run(() => markBeerFinished({ code, session, players, uid: user.uid }));
+  }
+
+  async function endRide() {
+    const ok = window.confirm('Avsluta Galoppen och spara rundan?');
+    if (!ok) return;
+    await run(() => finishGame({ code, session, players }));
   }
 
   async function choose(choice) {
@@ -98,7 +109,7 @@ export default function Page() {
   }
 
   async function arrived() {
-    await run(() => arriveAtDestination({ code, session, rider: me, selected: privateData.selected }));
+    await run(() => arriveAtDestination({ code, session, players, rider: me, selected: privateData.selected }));
   }
 
   if (mode === 'home') {
@@ -174,8 +185,24 @@ export default function Page() {
   if (session.status === 'finished') {
     return (
       <main className="shell"><Header code={session?.rideName || code} />
-        <div className="card hero finishCard"><div className="horse">🏁</div><div className="h1">Galoppen är över</div><p className="sub">{visited.length} stopp genomförda</p></div>
+        <div className="card hero finishCard">
+          <div className="horse">🏁</div>
+          <div className="h1">Galoppen är över</div>
+          <div className="savedBadge">✓ Rundans historik är sparad</div>
+          <p className="sub">{visited.length} stopp genomförda</p>
+        </div>
         <History visited={visited} />
+        <div className="card compact">
+          <div className="sectionHeader"><h3>🍺 Betalda rundor</h3><span>{players.length} ryttare</span></div>
+          <div className="statsGrid">
+            {players.map((p) => (
+              <div className="stat" key={p.uid}>
+                <strong>{p.nickname}</strong>
+                <span>🍺 {paymentStats[p.uid] || 0}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     );
   }
@@ -204,6 +231,11 @@ export default function Page() {
             </div>
           ))}
         </div>
+        {amOwner && (
+          <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+            AVSLUTA & SPARA RUNDAN
+          </button>
+        )}
       </main>
     );
   }
@@ -220,8 +252,13 @@ export default function Page() {
             <div className="meta">🚶 cirka {privateData.selected?.mins} min</div>
           </div>
           <div className="roleBox"><strong>På nästa stopp</strong><span>🍺 Du väljer vilken ölsort ni beställer.</span><span>💳 Du betalar rundan.</span></div>
-          <button className="btn primary" disabled={busy} onClick={arrived}>VI ÄR FRAMME 🍺</button>
+          <button className="btn primary" disabled={busy} onClick={arrived}>CHECKA IN HÄR 🍺</button>
         </div>
+        {amOwner && (
+          <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+            AVSLUTA & SPARA RUNDAN
+          </button>
+        )}
       </main>
     );
   }
@@ -237,17 +274,127 @@ export default function Page() {
           <div className="roleBox"><span>🧭 Följ ryttaren.</span><span>🍺 Ryttaren väljer ölsort.</span><span>💳 Ryttaren betalar nästa runda.</span></div>
         </div>
         <History visited={visited} compact />
+        {amOwner && (
+          <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+            AVSLUTA & SPARA RUNDAN
+          </button>
+        )}
+      </main>
+    );
+  }
+
+  if (session.phase === 'drinking') {
+    const stopNumber = visited.length;
+    const beerIsFinished = (me?.beerFinishedStop || 0) >= stopNumber;
+    const iAmNext = session.currentRiderUid === user?.uid;
+
+    return (
+      <main className="shell">
+        <Header code={session?.rideName || code} />
+        <div className="card currentCard">
+          <div className="topline">
+            <span className="tiny">STOPP {stopNumber}</span>
+            <span className="statusPill">🍺 Incheckad</span>
+          </div>
+          <div className="center">
+            <div className="beerIcon">🍺</div>
+            <div className="bigstop">{session.currentStop?.name}</div>
+            <span className="payer">
+              {visited[visited.length - 1]?.host
+                ? `🎩 ${currentPayer?.nickname} är host och betalar`
+                : `${currentPayer?.nickname} betalar rundan`}
+            </span>
+
+            {!beerIsFinished ? (
+              <>
+                <p className="sub">När du har druckit upp din öl markerar du det på din egen telefon.</p>
+                <button className="btn primary" disabled={busy} onClick={beerFinished}>ÖLEN ÄR SLUT 🍺</button>
+              </>
+            ) : iAmNext ? (
+              <div className="readyBox">
+                <div className="horse">🏇</div>
+                <h3>Du är nästa ryttare</h3>
+                <p className="sub">Dina hemliga alternativ förbereds…</p>
+              </div>
+            ) : (
+              <div className="readyBox">
+                <div className="horse">✓</div>
+                <h3>Din öl är klar</h3>
+                <p className="sub">Inväntar <strong>{currentRider?.nickname}</strong>, som är nästa ryttare.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {amOwner && (
+          <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+            AVSLUTA & SPARA RUNDAN
+          </button>
+        )}
+        <History visited={visited} compact />
       </main>
     );
   }
 
   if (session.phase === 'food') {
+    if (amRider) {
+      return (
+        <main className="shell"><Header code={session?.rideName || code} />
+          <div className="card foodCard"><div className="foodEmoji">🍔</div><h2>Dags för lite käk?</h2><p className="sub">Ni har gjort <strong>{visited.length} stopp</strong>. Vill du som nästa ryttare få alternativ där det också går att äta?</p>
+            <button className="btn primary" disabled={busy} onClick={() => run(() => answerFood({ code, session, players, wantsFood: true }))}>🍽 JA, GÄRNA MAT</button>
+            <button className="btn secondary" disabled={busy} onClick={() => run(() => answerFood({ code, session, players, wantsFood: false }))}>🏇 NEJ, FULL GALOPP</button>
+          </div>
+          {amOwner && (
+            <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+              AVSLUTA & SPARA RUNDAN
+            </button>
+          )}
+        </main>
+      );
+    }
     return (
       <main className="shell"><Header code={session?.rideName || code} />
-        <div className="card foodCard"><div className="foodEmoji">🍔</div><h2>Dags för lite käk?</h2><p className="sub">Ni har gjort <strong>{visited.length} stopp</strong>. Ska nästa ryttare försöka välja ett ställe där det också går att äta?</p>
-          <button className="btn primary" disabled={busy} onClick={() => run(() => answerFood({ code, session, wantsFood: true }))}>🍽 JA, GÄRNA MAT</button>
-          <button className="btn secondary" disabled={busy} onClick={() => run(() => answerFood({ code, session, wantsFood: false }))}>🏇 NEJ, FULL GALOPP</button>
+        <div className="card hero"><div className="horse">🍔</div><h3>Nästa ryttare tar ställning till mat</h3><p className="sub"><strong>{currentRider?.nickname}</strong> avgör om nästa stopp ska fungera för käk.</p></div>
+        {amOwner && (
+          <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+            AVSLUTA & SPARA RUNDAN
+          </button>
+        )}
+        <History visited={visited} compact />
+      </main>
+    );
+  }
+
+  // Vid Tennstopet är hosten den första som leder och den enda som checkar in.
+  if (session.phase === 'awaitingCheckIn') {
+    const amLeader = session.currentPayerUid === user?.uid;
+    return (
+      <main className="shell">
+        <Header code={session?.rideName || code} />
+        <div className="card currentCard">
+          <div className="topline"><span className="tiny">START</span><span className="statusPill">🍺 Tennstopet</span></div>
+          <div className="center">
+            <div className="beerIcon">🍺</div>
+            <div className="bigstop">{session.currentStop?.name}</div>
+            {amLeader ? (
+              <>
+                <span className="payer">🎩 Du är kvällens host och betalar första rundan</span>
+                <p className="sub">När ni har beställt och fått ölen checkar du in för hela gruppen.</p>
+                <button className="btn primary" disabled={busy} onClick={leaderCheckInStart}>CHECKA IN 🍺</button>
+              </>
+            ) : (
+              <>
+                <span className="payer">🎩 {currentPayer?.nickname} är kvällens host</span>
+                <p className="sub">Hosten checkar in för hela gruppen när första rundan är beställd.</p>
+              </>
+            )}
+          </div>
         </div>
+        {amOwner && (
+          <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+            AVSLUTA & SPARA RUNDAN
+          </button>
+        )}
       </main>
     );
   }
@@ -255,26 +402,16 @@ export default function Page() {
   return (
     <main className="shell">
       <Header code={session?.rideName || code} />
-      <div className="card currentCard">
-        <div className="topline"><span className="tiny">{visited.length} STOPP GENOMFÖRDA</span><span className="statusPill">🍺 Pågående</span></div>
-        <div className="center">
-          <div className="beerIcon">🍺</div>
-          <div className="bigstop">{session.currentStop?.name}</div>
-          {visited.length === 1 ? <span className="payer">🎩 {currentPayer?.nickname} är host och betalar</span> : <span className="payer">{currentPayer?.nickname} betalade rundan</span>}
-          <p className="sub">När ni har fått er öl checkar ni in. Då får nästa ryttare sina två hemliga val på sin egen telefon.</p>
-          <button className="btn primary" disabled={busy} onClick={checkIn}>CHECKA IN 🍺</button>
-        </div>
+      <div className="card hero">
+        <div className="horse">⏳</div>
+        <h3>Synkar Galoppen…</h3>
+        <p className="sub">Väntar på nästa steg.</p>
       </div>
-
-      <MapCard visited={visited} />
-      <History visited={visited} />
-
-      <div className="card compact">
-        <div className="sectionHeader"><h3>🏇 Ställningen</h3><span>betalda rundor</span></div>
-        <div className="statsGrid">{players.map((p) => <div className="stat" key={p.uid}><strong>{p.nickname}</strong><span>🍺 {paymentStats[p.uid] || 0}</span></div>)}</div>
-      </div>
-
-      {amOwner && <button className="btn ghost" disabled={busy} onClick={() => run(() => finishGame(code))}>Avsluta Galoppen</button>}
+      {amOwner && (
+          <button className="btn danger endRideBtn" disabled={busy} onClick={endRide}>
+            AVSLUTA & SPARA RUNDAN
+          </button>
+        )}
       {error && <div className="errorBox">{error}</div>}
     </main>
   );

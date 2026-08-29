@@ -28,3 +28,11 @@ npm run dev
 
 ## Viktigt inför produktion
 `lib/stops.js` innehåller fortfarande demo-stopp. Byt dessa mot verifierade riktiga barer/restaurangbarer innan skarp körning. Nästa steg är riktig Leaflet-karta och ruttdata.
+
+
+## v5 – individual beer finish
+Only the rider/host leading the current leg checks the group in. After check-in, every participant gets an **ÖLEN ÄR SLUT** button on their own phone. The next rider receives the two private destination choices only after marking their own beer as finished.
+
+
+## v6 – finish and save
+The host can end the ride from the active game. Ending the ride stores `status: finished`, `finishedAt`, `savedAt` and a summary in the existing Firestore session. The complete `visited` history remains in the session document and is therefore preserved for later recap/history views.
