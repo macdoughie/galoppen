@@ -75,3 +75,10 @@ UX copy has been simplified around the core loop: follow the rider, the rider or
 
 ## v12.1 – beer markers
 Visited stops now use a large beer icon as the primary map marker. The stop number remains as a small badge, and the current stop has a subtle pulse.
+
+
+## v13 – three choices + expanded venue pool
+- The current rider now receives three nearby hidden venue choices instead of two.
+- The primary range remains roughly 10 minutes walking from the current stop.
+- If fewer than three unvisited venues are available in range, the nearest candidates are used so the ride never dead-ends.
+- Six additional Vasastan/Odenplan/S:t Eriksplan venues were added to the curated pool.
