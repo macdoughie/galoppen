@@ -71,3 +71,7 @@ UX copy has been simplified around the core loop: follow the rider, the rider or
 - Walking routing uses the public OpenStreetMap.de foot-routing service and falls back to a straight guide line if routing is unavailable.
 - Google Maps remains available for turn-by-turn walking navigation.
 - Future/hidden venues remain private to the current rider.
+
+
+## v12.1 – beer markers
+Visited stops now use a large beer icon as the primary map marker. The stop number remains as a small badge, and the current stop has a subtle pulse.

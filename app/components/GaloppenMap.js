@@ -19,9 +19,9 @@ function beerMarkerIcon(number, current = false) {
   return L.divIcon({
     className: 'galoppen-leaflet-icon',
     html: `<div class="beerMapPin ${current ? 'current' : ''}"><span class="beerEmoji">🍺</span><span class="beerStopNo">${number}</span></div>`,
-    iconSize: [42, 42],
-    iconAnchor: [21, 21],
-    popupAnchor: [0, -21],
+    iconSize: [48, 48],
+    iconAnchor: [24, 42],
+    popupAnchor: [0, -42],
   });
 }
 
