@@ -100,3 +100,10 @@ Visited stops now use a large beer icon as the primary map marker. The stop numb
 
 ## v15.1 – build fix
 Fixed malformed escape characters in `lib/stops.js` that caused Vercel/Webpack to fail with `Expected unicode escape`.
+
+
+## v16 – GPS based choices
+- When the next rider opens the private choice screen, the app automatically tries to recalculate the three suggestions from that rider's current GPS position.
+- If GPS is unavailable/denied, the last registered stop remains the fallback origin.
+- "UPPDATERA ALTERNATIV 📍" lets the rider request three new suggestions after walking elsewhere; the current GPS position is read again.
+- Manual refresh tries to exclude the previous three suggestions before falling back to the broader unvisited pool.

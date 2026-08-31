@@ -13,6 +13,7 @@ import {
   joinSession,
   leaveRide,
   markBeerFinished,
+  refreshPrivateChoices,
   selectDestination,
   startGame,
   watchPlayers,
@@ -48,6 +49,7 @@ export default function Page() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [openedFromArchive, setOpenedFromArchive] = useState(false);
+  const [gpsChoiceAttemptKey, setGpsChoiceAttemptKey] = useState('');
 
   useEffect(() => {
     ensureAnonymousUser().then(setUser).catch((e) => setError(e.message));
@@ -70,6 +72,27 @@ export default function Page() {
     const off = watchActiveSessions(setActiveSessions);
     return () => off();
   }, [mode]);
+
+  useEffect(() => {
+    if (!user || !session || !privateData) return;
+    if (session.phase !== 'riding' || privateData.phase !== 'choose') return;
+    if (session.currentRiderUid !== user.uid) return;
+    if (privateData.originSource === 'gps') return;
+
+    const legKey = `${code}:${user.uid}:${(session.visited || []).length}`;
+    if (gpsChoiceAttemptKey === legKey) return;
+    setGpsChoiceAttemptKey(legKey);
+
+    refreshChoicesFromHere({ automatic: true });
+  }, [
+    code,
+    user?.uid,
+    session?.phase,
+    session?.currentRiderUid,
+    session?.visited?.length,
+    privateData?.phase,
+    privateData?.originSource,
+  ]);
 
   const me = players.find((p) => p.uid === user?.uid);
   const activePlayers = players.filter((p) => p.active !== false);
@@ -98,6 +121,54 @@ export default function Page() {
     try { setBusy(true); setError(''); await fn(); }
     catch (e) { setError(e.message || String(e)); }
     finally { setBusy(false); }
+  }
+
+  function getCurrentGpsPosition() {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        reject(new Error('GPS stöds inte på den här enheten.'));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => resolve({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: Math.round(pos.coords.accuracy || 0),
+        }),
+        () => reject(new Error('Kunde inte läsa din GPS-position. Alternativen baseras på senaste stoppet.')),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 15000 }
+      );
+    });
+  }
+
+  async function refreshChoicesFromHere({ automatic = false } = {}) {
+    if (!user || !session || !amRider || privateData?.phase !== 'choose') return;
+
+    try {
+      if (!automatic) { setBusy(true); setError(''); }
+      const gps = await getCurrentGpsPosition();
+      await refreshPrivateChoices({
+        code,
+        session,
+        uid: user.uid,
+        origin: gps,
+        previousChoices: privateData?.choices || [],
+      });
+    } catch (e) {
+      if (!automatic) {
+        setError(e.message || String(e));
+        await refreshPrivateChoices({
+          code,
+          session,
+          uid: user.uid,
+          origin: null,
+          previousChoices: privateData?.choices || [],
+        });
+      }
+    } finally {
+      if (!automatic) setBusy(false);
+    }
   }
 
   async function createGame() {
@@ -396,7 +467,20 @@ export default function Page() {
             <span>💳 Du betalar rundan.</span>
           </div>
           {session.foodMode && <div className="foodFlag">🍽 Försök välja ett stopp som också fungerar för mat.</div>}
-          <p className="sub">Bara du ser alternativen.</p>
+          <div className="choiceOrigin">
+            <strong>{privateData.originSource === 'gps' ? '📍 Alternativ från din GPS-position' : '📍 Alternativ från senaste stoppet'}</strong>
+            <span>{privateData.originSource === 'gps'
+              ? 'De tre förslagen räknas från där du befinner dig nu.'
+              : 'GPS saknas eller har ännu inte hämtats, så senaste stoppet används.'}</span>
+          </div>
+          <button
+            className="btn secondary refreshChoicesBtn"
+            disabled={busy}
+            onClick={() => refreshChoicesFromHere()}
+          >
+            {busy ? 'UPPDATERAR…' : 'UPPDATERA ALTERNATIV 📍'}
+          </button>
+          <p className="sub">Har du gått en bit kan du uppdatera och få tre nya förslag från din nuvarande position. Bara du ser alternativen.</p>
           {(privateData.choices || []).map((choice, i) => (
             <div className="choice" key={choice.id}>
               <div className="tiny">ALTERNATIV {i + 1}</div>
