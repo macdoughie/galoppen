@@ -9,6 +9,7 @@ import {
   checkInStart,
   createSession,
   finishGame,
+  findFinishedSession,
   joinSession,
   leaveRide,
   markBeerFinished,
@@ -17,6 +18,7 @@ import {
   watchPlayers,
   watchPrivate,
   watchSession,
+  watchActiveSessions,
 } from '../lib/game';
 import './globals.css';
 
@@ -36,6 +38,8 @@ export default function Page() {
   const [nickname, setNickname] = useState('');
   const [code, setCode] = useState('');
   const [rideName, setRideName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [activeSessions, setActiveSessions] = useState([]);
   const [capacity, setCapacity] = useState(4);
   const [session, setSession] = useState(null);
   const [players, setPlayers] = useState([]);
@@ -43,6 +47,7 @@ export default function Page() {
   const [hostUid, setHostUid] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [openedFromArchive, setOpenedFromArchive] = useState(false);
 
   useEffect(() => {
     ensureAnonymousUser().then(setUser).catch((e) => setError(e.message));
@@ -59,6 +64,12 @@ export default function Page() {
   useEffect(() => {
     if (players.length && !hostUid) setHostUid(players[0].uid);
   }, [players, hostUid]);
+
+  useEffect(() => {
+    if (mode !== 'active') return;
+    const off = watchActiveSessions(setActiveSessions);
+    return () => off();
+  }, [mode]);
 
   const me = players.find((p) => p.uid === user?.uid);
   const activePlayers = players.filter((p) => p.active !== false);
@@ -99,10 +110,20 @@ export default function Page() {
   }
 
   async function joinGame() {
-    if (!user || !nickname.trim() || !rideName.trim()) return;
+    if (!user || !nickname.trim() || !joinCode.trim()) return;
     await run(async () => {
-      const rideId = await joinSession({ rideName, user, nickname });
+      const rideId = await joinSession({ joinCode, user, nickname });
       setCode(rideId);
+      setMode('game');
+    });
+  }
+
+  async function openFinishedGame() {
+    if (!rideName.trim()) return;
+    await run(async () => {
+      const rideId = await findFinishedSession(rideName);
+      setCode(rideId);
+      setOpenedFromArchive(true);
       setMode('game');
     });
   }
@@ -144,7 +165,66 @@ export default function Page() {
           <div className="h1">Galoppen</div>
           <p className="sub">En ryttare i taget. Ett hemligt stopp i taget.</p>
           <button className="btn primary" onClick={() => setMode('create')}>SKAPA GALOPP</button>
-          <button className="btn secondary" onClick={() => setMode('join')}>JOIN THE RIDE</button>
+          <button className="btn secondary" onClick={() => { setOpenedFromArchive(false); setJoinCode(''); setMode('join'); }}>JOIN THE RIDE</button>
+          <button className="btn secondary activeRidesBtn" onClick={() => { setError(''); setMode('active'); }}>PÅGÅENDE GALOPPER 🏇</button>
+          <button className="btn ghost archiveBtn" onClick={() => { setRideName(''); setError(''); setMode('archive'); }}>
+            HÄMTA AVSLUTAD GALOPP 🏁
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (mode === 'active') {
+    return (
+      <main className="shell">
+        <Header />
+        <div className="card">
+          <div className="sectionHeader"><h2>Pågående Galopper</h2><span>{activeSessions.length} igång</span></div>
+          <p className="sub">Här ser du vilka Galopper som är öppna eller redan ute på stan. För att gå med behöver du fortfarande anslutningskoden från hosten.</p>
+          <div className="activeRideList">
+            {activeSessions.length === 0 && <div className="emptyRide">Ingen Galopp är igång just nu.</div>}
+            {activeSessions.map((s) => (
+              <div className="activeRide" key={s.rideId}>
+                <div>
+                  <strong>{s.rideName}</strong>
+                  <span>{s.status === 'playing' ? '🏇 Pågår' : '⏳ Väntar på start'}</span>
+                </div>
+                <small>
+                  {s.status === 'playing'
+                    ? `${(s.visited || []).length} stopp genomförda`
+                    : `Upp till ${s.capacity || '?'} ryttare`}
+                </small>
+              </div>
+            ))}
+          </div>
+          <button className="btn primary" onClick={() => { setJoinCode(''); setMode('join'); }}>JAG HAR EN KOD</button>
+          <button className="btn ghost" onClick={() => setMode('home')}>Tillbaka</button>
+        </div>
+      </main>
+    );
+  }
+
+  if (mode === 'archive') {
+    return (
+      <main className="shell">
+        <Header />
+        <div className="card archiveCard">
+          <div className="horse">🏁🍺</div>
+          <h2>Hämta avslutad Galopp</h2>
+          <p className="sub">Skriv Galoppens namn så öppnar vi den sparade kvällen med karta, stopp och statistik.</p>
+          <input
+            className="input"
+            placeholder="Galoppens namn"
+            value={rideName}
+            onChange={(e) => setRideName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && rideName.trim()) openFinishedGame(); }}
+          />
+          {error && <div className="errorBox">{error}</div>}
+          <button className="btn primary" disabled={busy || !rideName.trim()} onClick={openFinishedGame}>
+            {busy ? 'HÄMTAR…' : 'ÖPPNA GALOPPEN 🏁'}
+          </button>
+          <button className="btn ghost" onClick={() => { setError(''); setMode('home'); }}>Tillbaka</button>
         </div>
       </main>
     );
@@ -156,12 +236,23 @@ export default function Page() {
         <Header />
         <div className="card">
           <h2>{mode === 'create' ? 'Skapa kvällens Galopp' : 'Join the ride'}</h2>
-          {mode === 'join' && <p className="sub">Du kan ansluta både före start och mitt under en pågående Galopp. Är du sen ser du direkt var gänget befinner sig.</p>}
-          <input className="input" placeholder="Galoppens namn" value={rideName} onChange={(e) => setRideName(e.target.value)} />
+          {mode === 'join' && <p className="sub">Be hosten om den femteckniga anslutningskoden. Du kan använda den både före start och mitt under en pågående Galopp.</p>}
+          {mode === 'create' ? (
+            <input className="input" placeholder="Galoppens namn" value={rideName} onChange={(e) => setRideName(e.target.value)} />
+          ) : (
+            <input
+              className="input joinCodeInput"
+              placeholder="Anslutningskod, t.ex. K7M4P"
+              value={joinCode}
+              maxLength={5}
+              autoCapitalize="characters"
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+            />
+          )}
           <input className="input" placeholder={mode === 'create' ? 'Hostens smeknamn' : 'Ditt smeknamn'} value={nickname} onChange={(e) => setNickname(e.target.value)} />
           {mode === 'create' && <div className="capacityBox"><div><strong>Antal platser</strong><span>inklusive host</span></div><div className="capacityControls"><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.max(2,n-1))}>−</button><strong>{capacity}</strong><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.min(20,n+1))}>+</button></div></div>}
           {error && <div className="errorBox">{error}</div>}
-          <button className="btn primary" disabled={busy || !nickname.trim() || !rideName.trim()} onClick={mode === 'create' ? createGame : joinGame}>
+          <button className="btn primary" disabled={busy || !nickname.trim() || (mode === 'create' ? !rideName.trim() : !joinCode.trim())} onClick={mode === 'create' ? createGame : joinGame}>
             {busy ? '...' : mode === 'create' ? 'SKAPA GALOPPEN 🏇' : 'JOIN THE RIDE 🍺'}
           </button>
           <button className="btn ghost" onClick={() => setMode('home')}>Tillbaka</button>
@@ -190,7 +281,12 @@ export default function Page() {
         <div className="card">
           <div className="tiny">KVÄLLENS GALOPP</div>
           <div className="sessionCode">{session.rideName}</div>
-          <p className="sub">Övriga öppnar appen, väljer <strong>Join the ride</strong> och skriver Galoppens namn.</p>
+          <p className="sub">Övriga öppnar appen och väljer <strong>Join the ride</strong>.</p>
+          <div className="joinCodeCard">
+            <span>ANSLUTNINGSKOD</span>
+            <strong>{session.joinCode || '—'}</strong>
+            <small>Dela bara koden med dem som ska kunna gå med.</small>
+          </div>
           <div className="lobbyCount"><strong>{players.length}/{session.capacity}</strong> ryttare anslutna</div>
         </div>
 
@@ -235,6 +331,7 @@ export default function Page() {
           <div className="horse">🏁</div>
           <div className="h1">Galoppen är över</div>
           <div className="savedBadge">✓ Rundans historik är sparad</div>
+          {openedFromArchive && <div className="archiveOpenedBadge">📚 Öppnad från tidigare Galopper</div>}
           <p className="sub">{visited.length} stopp genomförda</p>
         </div>
         <RiderBoard players={players} beerStats={beerStats} currentRiderUid={null} stopNumber={visited.length} finished />
@@ -250,6 +347,20 @@ export default function Page() {
             ))}
           </div>
         </div>
+        <button
+          className="btn ghost archiveHomeBtn"
+          onClick={() => {
+            setCode('');
+            setSession(null);
+            setPlayers([]);
+            setPrivateData(null);
+            setOpenedFromArchive(false);
+            setRideName('');
+            setMode('home');
+          }}
+        >
+          TILL STARTSIDAN
+        </button>
       </main>
     );
   }

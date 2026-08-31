@@ -140,3 +140,24 @@ linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px
   0%{transform:scale(.75);opacity:.85}
   100%{transform:scale(1.45);opacity:0}
 }
+
+/* v14 – archived rides */
+.archiveBtn{margin-top:6px}
+.archiveCard{text-align:center}
+.archiveOpenedBadge{display:inline-flex;margin-top:10px;padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.07);font-size:11px;font-weight:800}
+.archiveHomeBtn{margin-top:14px}
+
+/* v15 – active rides + private join code */
+.activeRidesBtn{margin-top:8px}
+.activeRideList{display:flex;flex-direction:column;gap:9px;margin:14px 0}
+.activeRide{padding:13px 14px;border-radius:14px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08)}
+.activeRide>div{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.activeRide strong{font-size:15px}
+.activeRide span,.activeRide small{font-size:11px;opacity:.72}
+.activeRide small{display:block;margin-top:4px}
+.emptyRide{padding:18px;text-align:center;opacity:.65}
+.joinCodeInput{text-transform:uppercase;letter-spacing:.22em;font-weight:900;font-size:20px;text-align:center}
+.joinCodeCard{margin-top:14px;padding:16px;border-radius:16px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);text-align:center;display:flex;flex-direction:column;gap:4px}
+.joinCodeCard span{font-size:10px;letter-spacing:.13em;opacity:.65}
+.joinCodeCard strong{font-size:34px;letter-spacing:.18em}
+.joinCodeCard small{font-size:11px;opacity:.65}

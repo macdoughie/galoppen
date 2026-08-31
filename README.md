@@ -82,3 +82,17 @@ Visited stops now use a large beer icon as the primary map marker. The stop numb
 - The primary range remains roughly 10 minutes walking from the current stop.
 - If fewer than three unvisited venues are available in range, the nearest candidates are used so the ride never dead-ends.
 - Six additional Vasastan/Odenplan/S:t Eriksplan venues were added to the curated pool.
+
+
+## v14 – retrieve a finished ride
+- Home screen now includes "HÄMTA AVSLUTAD GALOPP".
+- Enter the ride name to reopen a finished Firestore session.
+- The archived view restores the final map, visited-stop history, rider beer totals and paid-round statistics.
+- Archived rides are read-only and cannot accidentally resume gameplay.
+
+
+## v15 – active rides + join codes
+- Hosts now receive a unique 5-character join code when a ride is created.
+- Riders join using the private code instead of the ride name.
+- Home screen includes "PÅGÅENDE GALOPPER" showing lobby/playing rides without exposing their join codes.
+- Ride names are display names and can be reused on future nights because Firestore session ids are now unique.
