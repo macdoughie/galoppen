@@ -96,3 +96,7 @@ Visited stops now use a large beer icon as the primary map marker. The stop numb
 - Riders join using the private code instead of the ride name.
 - Home screen includes "PÅGÅENDE GALOPPER" showing lobby/playing rides without exposing their join codes.
 - Ride names are display names and can be reused on future nights because Firestore session ids are now unique.
+
+
+## v15.1 – build fix
+Fixed malformed escape characters in `lib/stops.js` that caused Vercel/Webpack to fail with `Expected unicode escape`.
