@@ -114,3 +114,6 @@ Fixed malformed escape characters in `lib/stops.js` that caused Vercel/Webpack t
 - Efter val av Galopp fyller ryttaren i sitt smeknamn.
 - Två destinationsalternativ igen.
 - GPS-baserade alternativ och Uppdatera alternativ finns kvar.
+
+## v17.1 – session reference fix
+Restored the Firestore `sessionRef`, `playerRef` and `privateRef` helpers that were accidentally removed in v17. Also restored lookup of finished rides by display name.
