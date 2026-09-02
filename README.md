@@ -107,3 +107,10 @@ Fixed malformed escape characters in `lib/stops.js` that caused Vercel/Webpack t
 - If GPS is unavailable/denied, the last registered stop remains the fallback origin.
 - "UPPDATERA ALTERNATIV 📍" lets the rider request three new suggestions after walking elsewhere; the current GPS position is read again.
 - Manual refresh tries to exclude the previous three suggestions before falling back to the broader unvisited pool.
+
+## v17
+- Kodflödet är borttaget.
+- Join visar aktiva Galopper direkt, med platsstatus och JOIN-knapp.
+- Efter val av Galopp fyller ryttaren i sitt smeknamn.
+- Två destinationsalternativ igen.
+- GPS-baserade alternativ och Uppdatera alternativ finns kvar.

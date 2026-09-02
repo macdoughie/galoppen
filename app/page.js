@@ -39,8 +39,8 @@ export default function Page() {
   const [nickname, setNickname] = useState('');
   const [code, setCode] = useState('');
   const [rideName, setRideName] = useState('');
-  const [joinCode, setJoinCode] = useState('');
   const [activeSessions, setActiveSessions] = useState([]);
+  const [selectedRide, setSelectedRide] = useState(null);
   const [capacity, setCapacity] = useState(4);
   const [session, setSession] = useState(null);
   const [players, setPlayers] = useState([]);
@@ -68,7 +68,7 @@ export default function Page() {
   }, [players, hostUid]);
 
   useEffect(() => {
-    if (mode !== 'active') return;
+    if (mode !== 'join') return;
     const off = watchActiveSessions(setActiveSessions);
     return () => off();
   }, [mode]);
@@ -181,9 +181,9 @@ export default function Page() {
   }
 
   async function joinGame() {
-    if (!user || !nickname.trim() || !joinCode.trim()) return;
+    if (!user || !nickname.trim() || !selectedRide?.rideId) return;
     await run(async () => {
-      const rideId = await joinSession({ joinCode, user, nickname });
+      const rideId = await joinSession({ rideId: selectedRide.rideId, user, nickname });
       setCode(rideId);
       setMode('game');
     });
@@ -236,41 +236,10 @@ export default function Page() {
           <div className="h1">Galoppen</div>
           <p className="sub">En ryttare i taget. Ett hemligt stopp i taget.</p>
           <button className="btn primary" onClick={() => setMode('create')}>SKAPA GALOPP</button>
-          <button className="btn secondary" onClick={() => { setOpenedFromArchive(false); setJoinCode(''); setMode('join'); }}>JOIN THE RIDE</button>
-          <button className="btn secondary activeRidesBtn" onClick={() => { setError(''); setMode('active'); }}>PÅGÅENDE GALOPPER 🏇</button>
+          <button className="btn secondary" onClick={() => { setOpenedFromArchive(false); setSelectedRide(null); setNickname(''); setError(''); setMode('join'); }}>JOIN THE RIDE</button>
           <button className="btn ghost archiveBtn" onClick={() => { setRideName(''); setError(''); setMode('archive'); }}>
             HÄMTA AVSLUTAD GALOPP 🏁
           </button>
-        </div>
-      </main>
-    );
-  }
-
-  if (mode === 'active') {
-    return (
-      <main className="shell">
-        <Header />
-        <div className="card">
-          <div className="sectionHeader"><h2>Pågående Galopper</h2><span>{activeSessions.length} igång</span></div>
-          <p className="sub">Här ser du vilka Galopper som är öppna eller redan ute på stan. För att gå med behöver du fortfarande anslutningskoden från hosten.</p>
-          <div className="activeRideList">
-            {activeSessions.length === 0 && <div className="emptyRide">Ingen Galopp är igång just nu.</div>}
-            {activeSessions.map((s) => (
-              <div className="activeRide" key={s.rideId}>
-                <div>
-                  <strong>{s.rideName}</strong>
-                  <span>{s.status === 'playing' ? '🏇 Pågår' : '⏳ Väntar på start'}</span>
-                </div>
-                <small>
-                  {s.status === 'playing'
-                    ? `${(s.visited || []).length} stopp genomförda`
-                    : `Upp till ${s.capacity || '?'} ryttare`}
-                </small>
-              </div>
-            ))}
-          </div>
-          <button className="btn primary" onClick={() => { setJoinCode(''); setMode('join'); }}>JAG HAR EN KOD</button>
-          <button className="btn ghost" onClick={() => setMode('home')}>Tillbaka</button>
         </div>
       </main>
     );
@@ -301,31 +270,59 @@ export default function Page() {
     );
   }
 
-  if (mode === 'create' || mode === 'join') {
+  if (mode === 'join') {
+    return (
+      <main className="shell">
+        <Header />
+        {!selectedRide ? (
+          <div className="card">
+            <div className="sectionHeader"><h2>Join the ride</h2><span>{activeSessions.length} aktiva</span></div>
+            <p className="sub">Välj en Galopp som har plats. Du anger ditt namn i nästa steg.</p>
+            <div className="activeRideList">
+              {activeSessions.length === 0 && <div className="emptyRide">Ingen Galopp är igång just nu.</div>}
+              {activeSessions.map((s) => {
+                const count = s.playerCount || 0;
+                const full = !!s.capacity && count >= s.capacity;
+                return (
+                  <div className="activeRide joinableRide" key={s.rideId}>
+                    <div><strong>{s.rideName}</strong><span>{s.status === 'playing' ? '🏇 Pågår' : '⏳ Väntar på start'}</span></div>
+                    <small>{s.status === 'playing' ? `${(s.visited || []).length} stopp genomförda` : 'Inte startad ännu'}</small>
+                    <div className="rideCapacity">{count}/{s.capacity || '?'} ryttare</div>
+                    <button className="btn primary compactJoinBtn" disabled={full} onClick={() => { setSelectedRide(s); setNickname(''); setError(''); }}>
+                      {full ? 'FULL' : 'JOIN'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <button className="btn ghost" onClick={() => setMode('home')}>Tillbaka</button>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="tiny">DU GÅR MED I</div>
+            <h2>{selectedRide.rideName}</h2>
+            <p className="sub">{selectedRide.status === 'playing' ? 'Galoppen är redan igång — du läggs sist i turordningen.' : 'Galoppen väntar på start.'}</p>
+            <input className="input" placeholder="Ditt smeknamn" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+            {error && <div className="errorBox">{error}</div>}
+            <button className="btn primary" disabled={busy || !nickname.trim()} onClick={joinGame}>{busy ? '...' : 'JOIN THE RIDE 🍺'}</button>
+            <button className="btn ghost" onClick={() => { setSelectedRide(null); setError(''); }}>Välj annan Galopp</button>
+          </div>
+        )}
+      </main>
+    );
+  }
+
+  if (mode === 'create') {
     return (
       <main className="shell">
         <Header />
         <div className="card">
-          <h2>{mode === 'create' ? 'Skapa kvällens Galopp' : 'Join the ride'}</h2>
-          {mode === 'join' && <p className="sub">Be hosten om den femteckniga anslutningskoden. Du kan använda den både före start och mitt under en pågående Galopp.</p>}
-          {mode === 'create' ? (
-            <input className="input" placeholder="Galoppens namn" value={rideName} onChange={(e) => setRideName(e.target.value)} />
-          ) : (
-            <input
-              className="input joinCodeInput"
-              placeholder="Anslutningskod, t.ex. K7M4P"
-              value={joinCode}
-              maxLength={5}
-              autoCapitalize="characters"
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
-            />
-          )}
-          <input className="input" placeholder={mode === 'create' ? 'Hostens smeknamn' : 'Ditt smeknamn'} value={nickname} onChange={(e) => setNickname(e.target.value)} />
-          {mode === 'create' && <div className="capacityBox"><div><strong>Antal platser</strong><span>inklusive host</span></div><div className="capacityControls"><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.max(2,n-1))}>−</button><strong>{capacity}</strong><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.min(20,n+1))}>+</button></div></div>}
+          <h2>Skapa kvällens Galopp</h2>
+          <input className="input" placeholder="Galoppens namn" value={rideName} onChange={(e) => setRideName(e.target.value)} />
+          <input className="input" placeholder="Hostens smeknamn" value={nickname} onChange={(e) => setNickname(e.target.value)} />
+          <div className="capacityBox"><div><strong>Antal platser</strong><span>inklusive host</span></div><div className="capacityControls"><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.max(2,n-1))}>−</button><strong>{capacity}</strong><button type="button" className="roundBtn" onClick={() => setCapacity(n => Math.min(20,n+1))}>+</button></div></div>
           {error && <div className="errorBox">{error}</div>}
-          <button className="btn primary" disabled={busy || !nickname.trim() || (mode === 'create' ? !rideName.trim() : !joinCode.trim())} onClick={mode === 'create' ? createGame : joinGame}>
-            {busy ? '...' : mode === 'create' ? 'SKAPA GALOPPEN 🏇' : 'JOIN THE RIDE 🍺'}
-          </button>
+          <button className="btn primary" disabled={busy || !nickname.trim() || !rideName.trim()} onClick={createGame}>{busy ? '...' : 'SKAPA GALOPPEN 🏇'}</button>
           <button className="btn ghost" onClick={() => setMode('home')}>Tillbaka</button>
         </div>
       </main>
@@ -352,12 +349,7 @@ export default function Page() {
         <div className="card">
           <div className="tiny">KVÄLLENS GALOPP</div>
           <div className="sessionCode">{session.rideName}</div>
-          <p className="sub">Övriga öppnar appen och väljer <strong>Join the ride</strong>.</p>
-          <div className="joinCodeCard">
-            <span>ANSLUTNINGSKOD</span>
-            <strong>{session.joinCode || '—'}</strong>
-            <small>Dela bara koden med dem som ska kunna gå med.</small>
-          </div>
+          <p className="sub">Övriga öppnar appen, väljer <strong>Join the ride</strong> och klickar på Galoppen i listan.</p>
           <div className="lobbyCount"><strong>{players.length}/{session.capacity}</strong> ryttare anslutna</div>
         </div>
 
@@ -470,7 +462,7 @@ export default function Page() {
           <div className="choiceOrigin">
             <strong>{privateData.originSource === 'gps' ? '📍 Alternativ från din GPS-position' : '📍 Alternativ från senaste stoppet'}</strong>
             <span>{privateData.originSource === 'gps'
-              ? 'De tre förslagen räknas från där du befinner dig nu.'
+              ? 'De två förslagen räknas från där du befinner dig nu.'
               : 'GPS saknas eller har ännu inte hämtats, så senaste stoppet används.'}</span>
           </div>
           <button
@@ -480,7 +472,7 @@ export default function Page() {
           >
             {busy ? 'UPPDATERAR…' : 'UPPDATERA ALTERNATIV 📍'}
           </button>
-          <p className="sub">Har du gått en bit kan du uppdatera och få tre nya förslag från din nuvarande position. Bara du ser alternativen.</p>
+          <p className="sub">Har du gått en bit kan du uppdatera och få två nya förslag från din nuvarande position. Bara du ser alternativen.</p>
           {(privateData.choices || []).map((choice, i) => (
             <div className="choice" key={choice.id}>
               <div className="tiny">ALTERNATIV {i + 1}</div>

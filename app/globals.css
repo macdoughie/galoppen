@@ -176,3 +176,6 @@ linear-gradient(135deg,rgba(255,255,255,.035),rgba(255,255,255,.015));border:1px
 .choiceOrigin strong{font-size:13px}
 .choiceOrigin span{font-size:11px;opacity:.72;line-height:1.4}
 .refreshChoicesBtn{margin:0 0 8px}
+
+/* v17 */
+.joinableRide{position:relative}.rideCapacity{margin-top:8px;font-size:12px;font-weight:800}.compactJoinBtn{margin-top:10px}
