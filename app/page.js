@@ -277,7 +277,7 @@ export default function Page() {
         {!selectedRide ? (
           <div className="card">
             <div className="sectionHeader"><h2>Join the ride</h2><span>{activeSessions.length} aktiva</span></div>
-            <p className="sub">Välj en Galopp som har plats. Du anger ditt namn i nästa steg.</p>
+            <p className="sub">Välj en Galopp. Är den full men du redan är med kan du återansluta med samma smeknamn som tidigare.</p>
             <div className="activeRideList">
               {activeSessions.length === 0 && <div className="emptyRide">Ingen Galopp är igång just nu.</div>}
               {activeSessions.map((s) => {
@@ -288,8 +288,8 @@ export default function Page() {
                     <div><strong>{s.rideName}</strong><span>{s.status === 'playing' ? '🏇 Pågår' : '⏳ Väntar på start'}</span></div>
                     <small>{s.status === 'playing' ? `${(s.visited || []).length} stopp genomförda` : 'Inte startad ännu'}</small>
                     <div className="rideCapacity">{count}/{s.capacity || '?'} ryttare</div>
-                    <button className="btn primary compactJoinBtn" disabled={full} onClick={() => { setSelectedRide(s); setNickname(''); setError(''); }}>
-                      {full ? 'FULL' : 'JOIN'}
+                    <button className="btn primary compactJoinBtn" onClick={() => { setSelectedRide(s); setNickname(''); setError(''); }}>
+                      {full ? 'ÅTERANSLUT' : 'JOIN'}
                     </button>
                   </div>
                 );
@@ -301,7 +301,9 @@ export default function Page() {
           <div className="card">
             <div className="tiny">DU GÅR MED I</div>
             <h2>{selectedRide.rideName}</h2>
-            <p className="sub">{selectedRide.status === 'playing' ? 'Galoppen är redan igång — du läggs sist i turordningen.' : 'Galoppen väntar på start.'}</p>
+            <p className="sub">{selectedRide.status === 'playing'
+              ? 'Galoppen är redan igång. Är du ny läggs du sist; har du varit med tidigare återansluts du till din gamla plats med samma smeknamn.'
+              : 'Galoppen väntar på start. Har du varit med tidigare använder du samma smeknamn för att återansluta.'}</p>
             <input className="input" placeholder="Ditt smeknamn" value={nickname} onChange={(e) => setNickname(e.target.value)} />
             {error && <div className="errorBox">{error}</div>}
             <button className="btn primary" disabled={busy || !nickname.trim()} onClick={joinGame}>{busy ? '...' : 'JOIN THE RIDE 🍺'}</button>
